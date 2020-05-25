@@ -173,6 +173,29 @@ def main():
 	print PriorityList
 	print "length is " + str(len(PriorityList))
 
+	flowsize_str = f.readline()
+	print flowsize_str
+	flowsize_arr = flowsize_str.split(',')
+	flowsize_first = flowsize_arr[0].split(' ')[-1]
+	print "first flow size is ",  flowsize_first
+
+	flowsize_arr[0] = flowsize_first
+
+	flowrate_str = f.readline()
+	print flowrate_str
+	flowrate_arr = flowrate_str.split(',')
+	flowrate_first = flowrate_arr[0].split(' ')[-1]
+	print "first flow rate is ",  flowrate_first
+
+	flowrate_arr[0] = flowrate_first
+
+	print flowsize_arr
+	print flowrate_arr
+
+
+
+
+
 	doc = xml.dom.minidom.parse(options.f1)
 	doc2 = xml.dom.minidom.parse(options.f2)
 	# doc3 = xml.dom.minidom.parse(options.f3)
@@ -202,9 +225,9 @@ def main():
 
 	for i in range(0,flows.length):
 		flow = flows[i]
-		
+		flow_pri_index_mapping = i * 4 / 64 + i * 4 % 64
 		flowDict = {}
-		flowDict["priority"] = PriorityList[i]
+		flowDict["priority"] = PriorityList[flow_pri_index_mapping]
 		flowDict["id"] = flow.getAttribute("flowId")
 		flowDict["txPackets"] = flow.getAttribute("txPackets")
 		flowDict["rxPackets"] = flow.getAttribute("rxPackets")
@@ -224,7 +247,8 @@ def main():
 		flow = flows2[i]
 		
 		flowDict = {}
-		flowDict["priority"] = PriorityList[i]
+		flow_pri_index_mapping = i * 4 / 64 + i * 4 % 64
+		flowDict["priority"] = PriorityList[flow_pri_index_mapping]
 		flowDict["id"] = flow.getAttribute("flowId")
 		flowDict["txPackets"] = flow.getAttribute("txPackets")
 		flowDict["rxPackets"] = flow.getAttribute("rxPackets")
@@ -266,6 +290,10 @@ def main():
 
 
 	# print FlowList
+
+	# Print Flow State Result, 
+	# Print
+
 
 
 	# Sort FlowList with flow priority.
@@ -351,6 +379,7 @@ def main():
 
 
 
+	print "=================================="
 	print "avg list 1 ", avg_list_1
 	print "avg list 2 ", avg_list_2
 
@@ -375,13 +404,49 @@ def main():
 	print "Trail2: Time for CDF list", cdf_list_2
 	# print ("CDF Improve: CDF 50 is %f, CDF 90 is %f" %(cdf_50_improve, cdf_90_improve))
 
+
+
+
+
 	# CDF n percentage improvement
 	for i in range(0,len(cdf_list_1)):
 		cdf_percentage = float(cdf_list_1[i] - cdf_list_2[i]) / float(cdf_list_1[i])
 		print("CDF %dth : Trail 1 - %.2f, Trail2 - %.2f, diff - %.2f" %((i+1)*10, cdf_list_1[i], cdf_list_2[i], cdf_percentage))
 
 
+	# Print Summary
 
+	print "================Summary==============="
+	print "================FlowStates==============="
+	print "Flow Index \t Priority  \t Rate \t Size(512byte) \t Trial1.send \t Trial1.receive \t Trial1.FCT \t Trial2.send \t Trial2.receive \t Trial2.FCT \t"
+
+	flow_index_mapping_arr = []
+	for i in range (0,flows.length):
+		flow_pri_index_mapping = i * 4 / 64 + i * 4 % 64
+		print FlowList[i]["id"], "\t", FlowList[i]["priority"], "\t", flowrate_arr[flow_pri_index_mapping], "\t", flowsize_arr[flow_pri_index_mapping], "\t", FlowList[i]["txPackets"], "\t", FlowList[i]["rxPackets"], "\t",FlowList[i]["flow_completion_time"], "\t", FlowList2[i]["txPackets"], "\t", FlowList2[i]["rxPackets"], "\t",FlowList2[i]["flow_completion_time"]
+		flow_index_mapping_arr.append(flow_pri_index_mapping)
+
+
+
+	print flow_index_mapping_arr
+
+	print "===================FCT by Priority==============="
+	print "Priority \t Trial1 \t Trial2"
+	for i in range(len(avg_list_1)):
+		print avg_list_1[i], "\t", avg_list_2[i]
+
+	trial1_fct_avg = sum(avg_list_1)/ len(avg_list_1)
+	trial2_fct_avg = sum(avg_list_2)/ len(avg_list_2)
+	
+	print trial1_fct_avg, "\t", 	trial2_fct_avg
+
+
+	print "===================CDF Percentage==============="
+	print "CDF \t Trial1 \t Trial2"
+	for i in range(0,len(cdf_list_1)):
+		print cdf_list_1[i], "\t", cdf_list_2[i]
+	
+	print "================End for Summary==============="
 
 
 
@@ -432,7 +497,7 @@ def main():
 
 	fig.tight_layout()
 
-	# plt.show()
+	plt.show()
 
 if __name__ == "__main__":
 

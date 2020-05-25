@@ -21,7 +21,7 @@ FLOW_SIZE=$2
 FLOW_PRIORITY_MAX=$3
 GPFC_PAUSE_PRIORITY=$4
 
-TEST_CASE_NAME="0407-GPFC-TEST-STATIC-flowsize-${FLOW_SIZE}Byte-${FLOW_COUNT}flow-16pri-${GPFC_PAUSE_PRIORITY}pause"
+TEST_CASE_NAME="0520-GPFC-TEST-STATIC-flowsize-${FLOW_SIZE}Byte-${FLOW_COUNT}flow-16pri-${GPFC_PAUSE_PRIORITY}pause"
 
 #Set Variables
 
@@ -186,7 +186,7 @@ mv result.out ${TEST_CASE_NAME}/
 # done
 
 # run_sim 64 10000 16 3
- run_sim 64 1000000 16 8
+ run_sim 64 1000000 16 4
 
 # for flow_size in 10000 100000 1000000
 # do

@@ -17,7 +17,7 @@
 
 //
 // Network topology
-//   16:1 incast
+//   4:1 incast
 //
 //
 //
@@ -284,28 +284,22 @@ MyPFCApp::SendPacket (void)
 
         setRankTag(packet, m_priority);
         uint32_t rank = getRankTag(packet);
-//        SimpleTag rankTag;
-//        rankTag.SetRank(m_priority);
-//        packet->AddPacketTag(rankTag);
-//        NS_LOG_INFO("[My App] Call Add PKT's SimpleTag :  "  << m_priority);
-//
-//        SimpleTag rankTagTemp;
-//        packet->PeekPacketTag (rankTagTemp);
+
         NS_LOG_INFO("[My App "<< m_appId << "] Call Get PKT's SimpleTag from function. :  "  << rank);
 
 
-        SocketPriorityTag priorityTag;
-        priorityTag.SetPriority (m_priority);
-        NS_LOG_INFO("[My App "<< m_appId << "] Call Replace PKT's PriorityTag :  "  << m_priority);
+        // SocketPriorityTag priorityTag;
+        // priorityTag.SetPriority (m_priority);
+        // NS_LOG_INFO("[My App "<< m_appId << "] Call Replace PKT's PriorityTag :  "  << m_priority);
 
-        packet->ReplacePacketTag (priorityTag);
+        // packet->ReplacePacketTag (priorityTag);
 
-        SocketPriorityTag priorityTagTemp;
-        packet->PeekPacketTag (priorityTagTemp);
+        // SocketPriorityTag priorityTagTemp;
+        // packet->PeekPacketTag (priorityTagTemp);
 
-        NS_LOG_INFO("[My App "<< m_appId << "] Check Replace PKT's PriorityTag :  "  << priorityTagTemp.GetPriority());
+        // NS_LOG_INFO("[My App "<< m_appId << "] Check Replace PKT's PriorityTag :  "  << priorityTagTemp.GetPriority());
 
-        NS_LOG_INFO("[My App "<< m_appId << "] Send "<< m_packetsSent << " th Packet at Time :  "  << Simulator::Now ().GetMicroSeconds());
+        // NS_LOG_INFO("[My App "<< m_appId << "] Send "<< m_packetsSent << " th Packet at Time :  "  << Simulator::Now ().GetMicroSeconds());
 
 
         m_socket->Send(packet);
@@ -379,8 +373,8 @@ main (int argc, char *argv[])
     // Users may find it convenient to turn on explicit debugging
     // for selected modules; the below lines suggest how to do this
     #if 1
-    // LogComponentEnable ("GreedyPFCExample", LOG_LEVEL_INFO);
-    LogComponentEnable ("PifoFastQueueDisc", LOG_LEVEL_INFO);
+     LogComponentEnable ("GreedyPFCExample", LOG_LEVEL_ALL);
+    LogComponentEnable ("PifoFastQueueDisc", LOG_LEVEL_ALL);
     // LogComponentEnable ("QueueDisc", LOG_LEVEL_LOGIC);
 //    LogComponentEnable ("InetSocketAddress", LOG_LEVEL_ALL);
 //    LogComponentEnable ("Packet", LOG_LEVEL_ALL);
@@ -596,7 +590,7 @@ main (int argc, char *argv[])
              "enqueue_mode", StringValue(ENQUEUE_MODE)
 
     );
-
+    NS_LOG_INFO("Install tchRed1 : ");
     tchRed1.Install (T1R1);
 
 
@@ -620,6 +614,7 @@ main (int argc, char *argv[])
 //    tchRed2.Install (T1R1);
 
     for (std::size_t i = 0; i < FLOW_COUNT; i++){
+        NS_LOG_INFO("Install tchRed2 : " << i);
         tchRed2.Install(N1T1[i]);
     }
 

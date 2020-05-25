@@ -321,41 +321,6 @@ PifoFastQueueDisc::DoDequeue (void)
   NS_LOG_FUNCTION (this);
 
   Ptr<QueueDiscItem> item;
-//  uint32_t priority = 0;
-//  uint32_t dscp = 0;
-
-
-// In single Node Example, is peek algorithm needed??
-
-// Peek Algorithm.
-//   if(isPFCPAUSE || isGPFCPAUSE) {
-//       // do peek, return false if the queue is empty, or the head element's priority is lower than pause threshold.
-//       NS_LOG_LOGIC("[ " << NAME << "]" << "Queue Pause: is True, Paused packet priority threshold is " << m_ptr_pause_obj->getPauseValue());
-//       Ptr<const QueueDiscItem> peek_item;
-//       for (uint32_t i = 0; i < GetNInternalQueues (); i++)
-//       {
-//           if ((peek_item = GetInternalQueue (i)->Peek ()) != 0)
-//           {
-//               NS_LOG_LOGIC ("[ " << NAME << "]" << "Peeked from Queue " << i << ": " << peek_item);
-//               NS_LOG_LOGIC ("[ " << NAME << "]" << "Number packets in Queue " << i << ": " << GetInternalQueue (i)->GetNPackets ());
-//
-//               //get packet rank
-//               uint32_t rank = getRankTag(peek_item->GetPacket ());
-//
-//               // if the rank is smaller than paused rank,
-//               // return false,
-//               // else continue to dequeue packet from queue.
-//               if(rank >= PAUSE_PRI_LOCAL)
-//               {
-//                   NS_LOG_LOGIC ("[ " << NAME << "]" << "Peeked element priority(rank) " << rank << "is larger than(or equal) paused priority "
-//                                      << PAUSE_PRI_LOCAL );
-//                   NS_LOG_LOGIC ("[ " << NAME << "]" << "============ Packet Paused ===========");
-//                   return item;
-//               }
-//           }
-//       }
-//   }
-
 
     if(DEQUEUE_MODE == "RR"){
         item = DoDequeueRR();
@@ -548,29 +513,7 @@ PifoFastQueueDisc::CheckConfig (void)
         }
     }
 
-//  if (GetNInternalQueues () != 3)
-//    {
-//      NS_LOG_ERROR ("PifoFastQueueDisc needs 3 internal queues");
-//      return false;
-//    }
-
-//  if (GetInternalQueue (0)-> GetMaxSize ().GetUnit () != QueueSizeUnit::PACKETS ||
-//      GetInternalQueue (1)-> GetMaxSize ().GetUnit () != QueueSizeUnit::PACKETS ||
-//      GetInternalQueue (2)-> GetMaxSize ().GetUnit () != QueueSizeUnit::PACKETS)
-//    {
-//      NS_LOG_ERROR ("[ " << NAME << "]" << "PifoFastQueueDisc needs 3 internal queues operating in packet mode");
-//      return false;
-//    }
-//
-//  for (uint8_t i = 0; i < 2; i++)
-//    {
-//      if (GetInternalQueue (i)->GetMaxSize () < GetMaxSize ())
-//        {
-//          NS_LOG_ERROR ("[ " << NAME << "]" << "The capacity of some internal queue(s) is less than the queue disc capacity");
-//          return false;
-//        }
-//    }
-
+    NS_LOG_LOGIC ("[ " << NAME << "]" << "Check config is done");
   return true;
 }
 
