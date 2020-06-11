@@ -517,6 +517,8 @@ public:
   static constexpr const char* CHILD_QUEUE_DISC_DROP = "(Dropped by child queue disc) "; //!< Packet dropped by a child queue disc
   static constexpr const char* CHILD_QUEUE_DISC_MARK = "(Marked by child queue disc) "; //!< Packet marked by a child queue disc
 
+  virtual uint32_t getQueueOccupancy(void);
+
 protected:
   /**
    * \brief Dispose of the object
@@ -562,6 +564,9 @@ protected:
    *  \return true if the item was successfully marked, false otherwise
    */
   bool Mark (Ptr<QueueDiscItem> item, const char* reason);
+
+
+
 
 private:
   /**

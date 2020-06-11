@@ -67,6 +67,7 @@ public:
    */
   PifoFastQueueDisc ();
 
+  uint32_t getQueueOccupancy(void);
   virtual ~PifoFastQueueDisc();
 
   // Reasons for dropping packets
@@ -124,7 +125,7 @@ private:
     virtual Ptr<const QueueDiscItem> DoPeek (void);
     virtual bool CheckConfig (void);
     virtual void InitializeParams (void);
-    virtual uint32_t GetTotalQueueOccupancy(void);
+
     virtual void SetPause(uint32_t pause_rank);
     virtual void SetUnpause();
 

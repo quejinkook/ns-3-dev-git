@@ -140,32 +140,32 @@ TypeId PifoFastQueueDisc::GetTypeId (void)
 
             .AddAttribute ("pfc_th_max",
                            "PFC Max Threshold for Pause",
-                           UintegerValue (),
+                           UintegerValue (700),
                            MakeUintegerAccessor (&PifoFastQueueDisc::PFC_TH_MAX),
                            MakeUintegerChecker<uint32_t> ())
             .AddAttribute ("pfc_th_min",
                            "PFC Min Threshold for UnPause",
-                           UintegerValue (),
+                           UintegerValue (128),
                            MakeUintegerAccessor (&PifoFastQueueDisc::PFC_TH_MIN),
                            MakeUintegerChecker<uint32_t> ())
             .AddAttribute ("gpfc_th_max",
                            "GPFC Max Threshold for Pause",
-                           UintegerValue (),
+                           UintegerValue (400),
                            MakeUintegerAccessor (&PifoFastQueueDisc::GPFC_TH_MAX),
                            MakeUintegerChecker<uint32_t> ())
             .AddAttribute ("gpfc_th_min",
                            "GPFC Max Threshold for UnPause",
-                            UintegerValue (),
+                            UintegerValue (128),
                            MakeUintegerAccessor (&PifoFastQueueDisc::GPFC_TH_MIN),
                            MakeUintegerChecker<uint32_t> ())
             .AddAttribute ("max_priority",
-                           "GPFC Max Threshold for UnPause",
-                            UintegerValue (),
+                           "Max Priority value",
+                            UintegerValue (8),
                            MakeUintegerAccessor (&PifoFastQueueDisc::MAX_PRIORITY),
                            MakeUintegerChecker<uint32_t> ())
           .AddAttribute ("gpfc_pause_priority",
                          "GPFC Pause Priority",
-                         UintegerValue (),
+                         UintegerValue (3),
                          MakeUintegerAccessor (&PifoFastQueueDisc::GPFC_PAUSE_PRI),
                          MakeUintegerChecker<uint32_t> ())
             .AddAttribute ("is_gpfc",
@@ -263,54 +263,54 @@ PifoFastQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 //    mu.unlock();
 
 
-    if(isGPFC){
-        if(!isGPFCPAUSE && (TOTAL_QUEUE_OCCUPANCY >= GPFC_TH_MAX))
-        {
-
-            if(PAUSE_MODE == "STATIC") {
-                isGPFCPAUSE = true;
-                SetPause(GPFC_PAUSE_PRI);
-                PAUSE_COUNT_GPFC += 1;
-                NS_LOG_LOGIC ("[ " << NAME << "]" << " GPFC PAUSE STATIC No " <<  PAUSE_COUNT_GPFC
-                                                     << "--- Time(micro): " << Simulator::Now ().GetMicroSeconds ()
-                                   << ", pause priority " <<GPFC_PAUSE_PRI
-                                   << "TOTAL_QUEUE_OCCUPANCY : " << TOTAL_QUEUE_OCCUPANCY
-                                   << "GPFC_TH_MAX:" <<GPFC_TH_MAX);
-
-                TakeSnapShotQueue();
-            }
-            else if(PAUSE_MODE == "DYNAMIC") {
-                isGPFCPAUSE = true;
-                SetPause(int(AVG_PRIORITY));
-                PAUSE_COUNT_GPFC += 1;
-                NS_LOG_LOGIC ("[ " << NAME << "]" << " GPFC PAUSE DYNAMIC--- " <<  PAUSE_COUNT_GPFC
-                                                     << "Time(micro): " << Simulator::Now ().GetMicroSeconds ()
-                                   << ", pause priority " <<int(AVG_PRIORITY)
-                                   << "TOTAL_QUEUE_OCCUPANCY : " << TOTAL_QUEUE_OCCUPANCY
-                                   << "GPFC_TH_MAX:" <<GPFC_TH_MAX);
-
-                TakeSnapShotQueue();
-            }
-            else{
-                NS_LOG_ERROR ("[ " << NAME << "]" << " GPFC PAUSE ERROR--- Unknown Pause Mode: " <<PAUSE_MODE
-                                   << ". Expected Value is STATIC or DYNAMIC : ");
-            }
-        }
-    }
-
-    if(!isPFCPAUSE && (TOTAL_QUEUE_OCCUPANCY >= PFC_TH_MAX))
-    {
-        isPFCPAUSE = true;
-        SetPause(PFC_PAUSE_PRI);
-        PAUSE_COUNT_PFC += 1;
-
-        NS_LOG_LOGIC ("[ " << NAME << "]" << " PFC PAUSE " <<  PAUSE_COUNT_PFC
-                                             << "--- Time: " <<  Simulator::Now ().GetMilliSeconds ()
-                           <<"pause priority " <<PFC_PAUSE_PRI
-                           << "TOTAL_QUEUE_OCCUPANCY : " << TOTAL_QUEUE_OCCUPANCY
-                           << "PFC_TH_MAX:"<<PFC_TH_MAX);
-        TakeSnapShotQueue();
-    }
+//    if(isGPFC){
+//        if(!isGPFCPAUSE && (TOTAL_QUEUE_OCCUPANCY >= GPFC_TH_MAX))
+//        {
+//
+//            if(PAUSE_MODE == "STATIC") {
+//                isGPFCPAUSE = true;
+//                SetPause(GPFC_PAUSE_PRI);
+//                PAUSE_COUNT_GPFC += 1;
+//                NS_LOG_LOGIC ("[ " << NAME << "]" << " GPFC PAUSE STATIC No " <<  PAUSE_COUNT_GPFC
+//                                                     << "--- Time(micro): " << Simulator::Now ().GetMicroSeconds ()
+//                                   << ", pause priority " <<GPFC_PAUSE_PRI
+//                                   << "TOTAL_QUEUE_OCCUPANCY : " << TOTAL_QUEUE_OCCUPANCY
+//                                   << "GPFC_TH_MAX:" <<GPFC_TH_MAX);
+//
+//                TakeSnapShotQueue();
+//            }
+//            else if(PAUSE_MODE == "DYNAMIC") {
+//                isGPFCPAUSE = true;
+//                SetPause(int(AVG_PRIORITY));
+//                PAUSE_COUNT_GPFC += 1;
+//                NS_LOG_LOGIC ("[ " << NAME << "]" << " GPFC PAUSE DYNAMIC--- " <<  PAUSE_COUNT_GPFC
+//                                                     << "Time(micro): " << Simulator::Now ().GetMicroSeconds ()
+//                                   << ", pause priority " <<int(AVG_PRIORITY)
+//                                   << "TOTAL_QUEUE_OCCUPANCY : " << TOTAL_QUEUE_OCCUPANCY
+//                                   << "GPFC_TH_MAX:" <<GPFC_TH_MAX);
+//
+//                TakeSnapShotQueue();
+//            }
+//            else{
+//                NS_LOG_ERROR ("[ " << NAME << "]" << " GPFC PAUSE ERROR--- Unknown Pause Mode: " <<PAUSE_MODE
+//                                   << ". Expected Value is STATIC or DYNAMIC : ");
+//            }
+//        }
+//    }
+//
+//    if(!isPFCPAUSE && (TOTAL_QUEUE_OCCUPANCY >= PFC_TH_MAX))
+//    {
+//        isPFCPAUSE = true;
+//        SetPause(PFC_PAUSE_PRI);
+//        PAUSE_COUNT_PFC += 1;
+//
+//        NS_LOG_LOGIC ("[ " << NAME << "]" << " PFC PAUSE " <<  PAUSE_COUNT_PFC
+//                                             << "--- Time: " <<  Simulator::Now ().GetMilliSeconds ()
+//                           <<"pause priority " <<PFC_PAUSE_PRI
+//                           << "TOTAL_QUEUE_OCCUPANCY : " << TOTAL_QUEUE_OCCUPANCY
+//                           << "PFC_TH_MAX:"<<PFC_TH_MAX);
+//        TakeSnapShotQueue();
+//    }
 
     return retval;
 }
@@ -319,8 +319,45 @@ Ptr<QueueDiscItem>
 PifoFastQueueDisc::DoDequeue (void)
 {
   NS_LOG_FUNCTION (this);
-
   Ptr<QueueDiscItem> item;
+  Ptr<const QueueDiscItem> item_temp;
+
+    // peek first to check if pause it or not,
+    // if not, then dequeue,
+    NS_LOG_LOGIC("[ " << NAME << "]" << "======> Start DoDequeue  " );
+    NS_LOG_LOGIC("[ " << NAME << "]" << "Check Pause Status" );
+
+    if(m_ptr_pause_obj->getIsPause()){
+        NS_LOG_LOGIC("[ " << NAME << "]" << "Pause True,Pause Rank:" << m_ptr_pause_obj->getPauseValue());
+        NS_LOG_LOGIC("[ " << NAME << "]" << "Peek First to check the head packet need paused" );
+
+        for (uint32_t i = 0; i < GetNInternalQueues(); i++) {
+            if ((item_temp = GetInternalQueue(i)->Peek()) != 0) {
+                uint32_t rank = getRankTag(item_temp->GetPacket());
+                NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item with rank" << rank);
+
+                if(m_ptr_pause_obj->getPauseValue() == 0)
+                {
+                    NS_LOG_LOGIC("[ " << NAME << "]" << "The current pause state is : Pause All Traffic");
+                    NS_LOG_LOGIC("[ " << NAME << "]" << "======> End DoDequeue");
+                    return item;
+                }
+
+                if (rank >= m_ptr_pause_obj->getPauseValue()){
+                    NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item has larger or equal rank than paused rank");
+                    NS_LOG_LOGIC("[ " << NAME << "]" << "======> End DoDequeue");
+                    return item;
+                }else{
+                    NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item has small rank than paused rank");
+                    NS_LOG_LOGIC("[ " << NAME << "]" << "Continue to Dequeue");
+                }
+            }
+        }
+
+    } else{
+        NS_LOG_LOGIC("[ " << NAME << "]" << "Pause False, Continue to Dequeue");
+
+    }
 
     if(DEQUEUE_MODE == "RR"){
         item = DoDequeueRR();
@@ -330,57 +367,59 @@ PifoFastQueueDisc::DoDequeue (void)
         item = DoDequeuePQ();
     }
 
-    // check unpause condition.
-    if(item != nullptr)
-    {
-        uint32_t rank = getRankTag(item->GetPacket ());
-        NS_LOG_LOGIC ("[ " << NAME << "]" << "Average Rank Before : " << AVG_PRIORITY);
 
-        // Calculate Enqueued Packet Average
-        // if the queue is empty, reset average to 0
-        // else calculate updated average.
 
-        if(TOTAL_QUEUE_OCCUPANCY == 0)
-        {
-            AVG_PRIORITY = 0;
-        }
-        else
-        {
-            AVG_PRIORITY = AVG_PRIORITY - (rank - AVG_PRIORITY) / TOTAL_QUEUE_OCCUPANCY;
-        }
-
-        NS_LOG_LOGIC ("[ " << NAME << "]" << "Dequeued Packet Priority: " << rank
-                      << "\n Average Rank After :" << AVG_PRIORITY );
-
-        NS_LOG_LOGIC("[ " << NAME << "]" << "Start to Check UnPause Condition");
-        if(isGPFCPAUSE && !isPFCPAUSE) // GPFC Pause Only
-        {
-            // if current queue occupancy is smaller than GPFC Min Threshold, then
-            // set unpause
-            if(TOTAL_QUEUE_OCCUPANCY <= GPFC_TH_MIN)
-            {
-                isGPFCPAUSE = false;
-                SetUnpause();
-                NS_LOG_LOGIC("[ " << NAME << "]" << "SetUnpause by GPFC TH MIN, Queue Occupancy at " << TOTAL_QUEUE_OCCUPANCY);
-                TakeSnapShotQueue();
-            }
-        } else if (isPFCPAUSE) // if PFC pause
-        {
-            // if current queue occupancy is smaller than PFC Min Threshold, then
-            // set unpause
-            if(TOTAL_QUEUE_OCCUPANCY <= PFC_TH_MIN)
-            {
-                isPFCPAUSE = false;
-                isGPFCPAUSE = false;
-                SetUnpause();
-                NS_LOG_LOGIC("[ " << NAME << "]" << "SetUnpause by PFC TH MIN, Queue Occupancy at " << TOTAL_QUEUE_OCCUPANCY);
-                TakeSnapShotQueue();
-            }
-        }
-    }else
-    {
-        NS_LOG_LOGIC("[ " << NAME << "]" << "ByPass Check Pause Condition due to nullptr");
-    }
+//    // check unpause condition.
+//    if(item != nullptr)
+//    {
+//        uint32_t rank = getRankTag(item->GetPacket ());
+//        NS_LOG_LOGIC ("[ " << NAME << "]" << "Average Rank Before : " << AVG_PRIORITY);
+//
+//        // Calculate Enqueued Packet Average
+//        // if the queue is empty, reset average to 0
+//        // else calculate updated average.
+//
+//        if(TOTAL_QUEUE_OCCUPANCY == 0)
+//        {
+//            AVG_PRIORITY = 0;
+//        }
+//        else
+//        {
+//            AVG_PRIORITY = AVG_PRIORITY - (rank - AVG_PRIORITY) / TOTAL_QUEUE_OCCUPANCY;
+//        }
+//
+//        NS_LOG_LOGIC ("[ " << NAME << "]" << "Dequeued Packet Priority: " << rank
+//                      << "\n Average Rank After :" << AVG_PRIORITY );
+//
+//        NS_LOG_LOGIC("[ " << NAME << "]" << "Start to Check UnPause Condition");
+//        if(isGPFCPAUSE && !isPFCPAUSE) // GPFC Pause Only
+//        {
+//            // if current queue occupancy is smaller than GPFC Min Threshold, then
+//            // set unpause
+//            if(TOTAL_QUEUE_OCCUPANCY <= GPFC_TH_MIN)
+//            {
+//                isGPFCPAUSE = false;
+//                SetUnpause();
+//                NS_LOG_LOGIC("[ " << NAME << "]" << "SetUnpause by GPFC TH MIN, Queue Occupancy at " << TOTAL_QUEUE_OCCUPANCY);
+//                TakeSnapShotQueue();
+//            }
+//        } else if (isPFCPAUSE) // if PFC pause
+//        {
+//            // if current queue occupancy is smaller than PFC Min Threshold, then
+//            // set unpause
+//            if(TOTAL_QUEUE_OCCUPANCY <= PFC_TH_MIN)
+//            {
+//                isPFCPAUSE = false;
+//                isGPFCPAUSE = false;
+//                SetUnpause();
+//                NS_LOG_LOGIC("[ " << NAME << "]" << "SetUnpause by PFC TH MIN, Queue Occupancy at " << TOTAL_QUEUE_OCCUPANCY);
+//                TakeSnapShotQueue();
+//            }
+//        }
+//    }else
+//    {
+//        NS_LOG_LOGIC("[ " << NAME << "]" << "ByPass Check Pause Condition due to nullptr");
+//    }
 
       return item;
 }
@@ -389,6 +428,7 @@ PifoFastQueueDisc::DoDequeuePQ (void)
 {
     NS_LOG_FUNCTION (this);
     Ptr<QueueDiscItem> item;
+
     for (uint32_t i = 0; i < GetNInternalQueues(); i++) {
         if ((item = GetInternalQueue(i)->Dequeue()) != 0) {
 //              mu.lock();
@@ -524,8 +564,10 @@ PifoFastQueueDisc::InitializeParams (void)
 }
 
 uint32_t
-PifoFastQueueDisc::GetTotalQueueOccupancy(void){
+PifoFastQueueDisc::getQueueOccupancy(){
     return TOTAL_QUEUE_OCCUPANCY;
 }
+
+
 
 } // namespace ns3

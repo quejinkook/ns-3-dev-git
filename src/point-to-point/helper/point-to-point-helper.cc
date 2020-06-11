@@ -227,6 +227,7 @@ PointToPointHelper::Install (NodeContainer c)
 NetDeviceContainer 
 PointToPointHelper::Install (Ptr<Node> a, Ptr<Node> b)
 {
+    NS_LOG_INFO ("PTP Helper (Ptr<Node> a, Ptr<Node> b)" << a << ":" << b);
   NetDeviceContainer container;
 
   Ptr<PointToPointNetDevice> devA = m_deviceFactory.Create<PointToPointNetDevice> ();

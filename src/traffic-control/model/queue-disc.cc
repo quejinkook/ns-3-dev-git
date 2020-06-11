@@ -1118,4 +1118,9 @@ QueueDisc::Transmit (Ptr<QueueDiscItem> item)
   return true;
 }
 
+uint32_t
+QueueDisc::getQueueOccupancy(){
+    return 0;
+}
+
 } // namespace ns3

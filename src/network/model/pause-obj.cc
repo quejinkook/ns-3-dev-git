@@ -3,7 +3,13 @@ namespace ns3 {
 
     PauseObj::PauseObj()
             : m_pauseRank(0),
-              m_isPause(false)
+              m_isPause(false),
+              m_nodeName("Dummy_Node")
+    {}
+    PauseObj::PauseObj(std::string name)
+            : m_pauseRank(0),
+              m_isPause(false),
+              m_nodeName(name)
     {}
 
     PauseObj::~PauseObj(){}
@@ -23,6 +29,9 @@ namespace ns3 {
         return GetTypeId ();
     }
 
+    void PauseObj::setName(std::string name){
+        m_nodeName = name;
+    }
 
     void
     PauseObj::setup(uint32_t pause_value, bool is_pause)
@@ -50,4 +59,9 @@ namespace ns3 {
             PauseObj::setPauseValue(uint32_t pause_value){
     m_pauseRank = pause_value;
     }
+
+    std::string PauseObj::getName() {
+        return m_nodeName;
+    }
+
 }

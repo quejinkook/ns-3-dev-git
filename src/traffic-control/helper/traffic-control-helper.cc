@@ -367,11 +367,14 @@ TrafficControlHelper::SetQueueLimits (std::string type,
 QueueDiscContainer
 TrafficControlHelper::Install (Ptr<NetDevice> d)
 {
+    NS_LOG_INFO("TCH: Install(Ptr<NetDevice> d)");
   QueueDiscContainer container;
 
   // A TrafficControlLayer object is aggregated by the InternetStackHelper, but check
   // anyway because a queue disc has no effect without a TrafficControlLayer object
+
   Ptr<TrafficControlLayer> tc = d->GetNode ()->GetObject<TrafficControlLayer> ();
+    NS_LOG_INFO("TCH: Bugpoint 1, TC value" << tc);
   NS_ASSERT (tc != 0);
 
   // Start from an empty vector of queue discs
@@ -413,9 +416,12 @@ QueueDiscContainer
 TrafficControlHelper::Install (NetDeviceContainer c)
 {
   QueueDiscContainer container;
+    NS_LOG_INFO("TCH: Install(NetDeviceContainer c)" << c.GetN());
 
   for (NetDeviceContainer::Iterator i = c.Begin (); i != c.End (); ++i)
     {
+//      NS_LOG_INFO("TCH: For loop index:" << i);
+      NS_LOG_INFO("TCH: For loop item:" << *i);
       container.Add (Install (*i));
     }
 
