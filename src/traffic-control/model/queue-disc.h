@@ -756,6 +756,14 @@ private:
   ChildQueueDiscDropFunctor m_childQueueDiscDadFunctor;
   /// Function object called when a child queue disc marked a packet
   ChildQueueDiscMarkFunctor m_childQueueDiscMarkFunctor;
+
+  // in Pause state, queue dist call backend dequeue.
+  // true value for there are backend dequeue exists,
+  // otherwise set value as false.
+  // when the value is false,
+  // the dequeue process will call backend dequeue in paused mode. 
+  bool  m_isRunBackendDequeue = false;
+
 };
 
 /**

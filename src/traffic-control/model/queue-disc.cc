@@ -998,6 +998,7 @@ QueueDisc::DequeueWaitNext (void){
     // in GPFC mode,
     // in GPFC Pause state, the packet with lower priority may stop at the queue,
     NS_LOG_FUNCTION (this);
+    m_isRunBackendDequeue = true;
     Ptr<const QueueDiscItem> item_peek = Peek();
     if(item_peek == 0){
         // means queue empty
@@ -1015,6 +1016,8 @@ QueueDisc::DequeueWaitNext (void){
         } else {
             // if packet is dequeued, then call TransmitStart(p)
             NS_LOG_LOGIC("[Queue Disc] Dequeue PKT after Pause, transmit Packet" << item);
+            // set m_isRunBackendDequeue as false.
+            m_isRunBackendDequeue = false;
             Transmit (item);
         }
     }
@@ -1033,12 +1036,12 @@ QueueDisc::Restart (void)
       // Zhenguo Cui
       // before end the function,
       // peek item, and if packet exists,
-      // schedule it,
-      Ptr<const QueueDiscItem> item_peek = Peek();
-
-      if(item_peek!=0){
+      // schedule backend dequeue,
+      
+      if (!m_isRunBackendDequeue && getQueueOccupancy()>0){      
           DequeueWaitNext();
-      }
+        }
+
 
       return false;
     }
@@ -1154,6 +1157,15 @@ QueueDisc::Transmit (Ptr<QueueDiscItem> item)
     {
       return false;
     }
+
+
+  if(getQueueOccupancy() >0 && !m_isRunBackendDequeue){
+    // zhenguo cui
+    // continue to dequeue
+    Simulator::ScheduleNow (&QueueDisc::DequeueWaitNext, this);
+    // DequeueWaitNext();
+  }
+
 
   return true;
 }
