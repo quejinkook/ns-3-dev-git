@@ -72,15 +72,15 @@ static std::string LEAF_SPINE_LINK_DELAY = "10us";      // leaf-spine link delay
 // --------- Flow Parameters
 static uint32_t FLOW_COUNT = 2;                    // flow count per each node.
 static std::string FLOW_RATE_HIGH = "0.7Gbps"; // flow rate for high priority flow
-static std::string FLOW_RATE_LOW = "1Gbps"; // flow rate for low priority flow
-static uint32_t FLOW_SIZE = 10000;                  // unit KB.
+static std::string FLOW_RATE_LOW = "0.4Gbps"; // flow rate for low priority flow
+static uint32_t FLOW_SIZE = 1000;                  // unit KB.
 static uint32_t FLOW_PKT_SIZE = 512;
 
 // ---------- Simulation Parameters
 static Time startTime = Seconds (0);
-static Time stopTime = Seconds (5);
+static Time stopTime = Seconds (1);
 static Time measurementWindow = MilliSeconds(10);
-static Time GPFCStateUpdateWindow = MicroSeconds(10);
+static Time GPFCStateUpdateWindow = MicroSeconds(100);
 
 
 // ----------- Log files
@@ -261,13 +261,17 @@ uint32_t getRankTag(Ptr <Packet> packet)
     return rankTagTemp.GetRank();
 }
 
-void setRankTag(Ptr <Packet> packet, uint32_t rank)
+void setRankTag(Ptr <Packet> packet, uint32_t id, uint32_t rank, uint32_t num)
 {
     MySimpleTag rankTag;
+    Time timeSent = Simulator::Now ();
     rankTag.SetRank(rank);
+    rankTag.SetId(id);
+    rankTag.SetNo(num);
+    rankTag.SetTimeSent(timeSent.GetNanoSeconds());
     packet->AddPacketTag(rankTag);
-    NS_LOG_INFO("[My App] Call Add PKT's SimpleTag :  "  << rank);
-
+    NS_LOG_INFO("[My App] Call Add PKT's SimpleTag :  Id:" << rankTag.GetId() << " rank:"  << rankTag.GetRank() << " No:"
+    << rankTag.GetNo() <<" at Time:" << rankTag.GetTimeSent() );
 }
 
 void
@@ -286,12 +290,32 @@ MyPFCApp::SendPacket (void)
     else {
 
         Ptr <Packet> packet = Create<Packet>(m_packetSize);
+        MySimpleTag rankTagTemp;
+        rankTagTemp.SetRank(m_priority);
+        rankTagTemp.SetId(m_appId);
+        rankTagTemp.SetNo(m_packetsSent);
+        rankTagTemp.SetTimeSent(Simulator::Now ().GetNanoSeconds());
+        packet->AddPacketTag(rankTagTemp);
 
-        setRankTag(packet, m_priority);
-        uint32_t rank = getRankTag(packet);
 
-        NS_LOG_INFO("[My App "<< m_appId << "] Call Get PKT's SimpleTag from function. :  "  << rank);
+        //
+//        setRankTag(packet, m_appId, m_priority, m_packetsSent);
+//        uint32_t rank = getRankTag(packet);
+//        NS_LOG_INFO("[My App "<< m_appId << "]======> Packet Info: AppID, AppPriority, PktNo, Delay " << m_appId << ","
+//                         << rank << "," << m_packetsSent);
 
+//        MySimpleTag rankTagTemp;
+//        packet->PeekPacketTag (rankTagTemp);
+////            uint32_t appId =  rankTagTemp.GetId();
+//        uint32_t appPriority = rankTagTemp.GetRank();
+////            uint32_t appPktNo = rankTagTemp.GetNo();
+//        Time sentTime = rankTagTemp.GetTimeSent();
+        Time finalTime = Simulator::Now ();
+        uint64_t delayInNano =finalTime.GetNanoSeconds() - rankTagTemp.GetTimeSent();
+
+        NS_LOG_WARN("[My App "<< m_appId << "]======> Dequeue Packet " << packet);
+        NS_LOG_WARN("[My App "<< m_appId << "]======> Packet Info: AppID, AppPriority, PktNo, Delay :" << rankTagTemp.GetId() << ","
+                         << rankTagTemp.GetRank() << "," << rankTagTemp.GetNo() << "," << delayInNano << "Ns");
 
         m_socket->Send(packet);
 
@@ -309,6 +333,7 @@ MyPFCApp::SendPacket (void)
 void
 MyPFCApp::ScheduleTx (void)
 {
+
     if (m_running)
     {
         Time tNext (Seconds (m_packetSize * 8 / static_cast<double> (m_dataRate.GetBitRate ())));
@@ -365,50 +390,115 @@ PrintProgress (Time interval)
 void
 GPFCStatusManageFunc (Ptr<PauseObj> ptr_pause_obj, QueueDiscContainer qdc, Time interval)
 {
-    bool isPause_temp = ptr_pause_obj->getIsPause();
-    uint32_t pauseRank_temp = ptr_pause_obj->getPauseValue();
+    bool isPause_temp = false;
+    bool isUnPause_temp = false;
+    uint32_t pauseRank_temp = 999;
+
+
+	NS_LOG_INFO("Monitor Status for  " << ptr_pause_obj->getName() <<"  at Time: "<< std::fixed << std::setprecision (1)
+    << Simulator::Now ().GetMicroSeconds () << "micro sec,  "
+    << "  Is Pause" << ptr_pause_obj->getIsPause()
+    << "  Pause Rank" << ptr_pause_obj->getPauseValue());
+
     std::cout << "Monitor Status for  " << ptr_pause_obj->getName()
     <<"  at Time: "<< std::fixed << std::setprecision (1)
-    << Simulator::Now ().GetMilliSeconds () << "ms,  "
-    << "Is Pause?" << isPause_temp
-    << "Pause Rank" << pauseRank_temp
+    << Simulator::Now ().GetMicroSeconds () << "micro sec,  "
+    << "  Is Pause" << ptr_pause_obj->getIsPause()
+    << "  Pause Rank" << ptr_pause_obj->getPauseValue()
     << std::endl;
 
 
-    for (QueueDiscContainer::ConstIterator i = qdc.Begin (); i != qdc.End (); ++i)
-    {
+    for (std::size_t i = 0; i < qdc.GetN(); i++){
+//    for (QueueDiscContainer::ConstIterator i = qdc.Begin (); i != qdc.End (); ++i)
+//    {
 //      NS_LOG_INFO("TCH: For loop index:" << i);
 //        Ptr<PifoFastQueueDisc> qc = (Ptr<PifoFastQueueDisc>)(*i);
-        uint32_t queue_occupancy = (*i)->getQueueOccupancy();
+        Ptr<QueueDisc> qc = qdc.Get(i);
+        uint32_t queue_occupancy = qc->getQueueOccupancy();
 //        uint32_t queue_occupancy = 0;
         // check pause status
 
-        std::cout << "Queue Occupancy for   " << (*i) <<"  is: " << queue_occupancy <<  std::endl;
+        std::cout << "Queue Occupancy for   " << qc <<"  is: " << queue_occupancy << std::endl;
+        NS_LOG_INFO("Queue Occupancy for   " << qc <<"  is: " << queue_occupancy);
+
+
+        // logic, check XOFF and XON condition,
+
+        // if obj is unpaused, then check XOFF condition,
+        // if isGPFC, then check GPFC XOFF condition,
+        // else obj is paused,
+        // if isGPFC, then check
+
+//        if(!ptr_pause_obj->getIsPause()){
+//            // if obj is unpaused, then check XOFF condition,
+//            // if isGPFC, then check GPFC XOFF condition,
+//
+//
+//        }else {
+//
+//        }
+
+
+
+
+
 
         if(isGPFC && queue_occupancy > GPFC_TH_MAX){
-            isPause_temp = true;
+//        	NS_LOG_INFO("Check 1: goto GPFC pause status check");
+//            std::cout << "Check 1: goto GPFC pause status check" << std::endl;
+
             //update pause rank if the last pause rank is bigger than GPFC_PAUSE_PRIORITY
-            if(pauseRank_temp > GPFC_PAUSE_PRIORITY){
-                pauseRank_temp = GPFC_PAUSE_PRIORITY;
-            }
+            isPause_temp = true;
+            pauseRank_temp = GPFC_PAUSE_PRIORITY;
+//            std::cout << "XOFF by GPFC with pause rank" << pauseRank_temp << std::endl;
+
+//            NS_LOG_INFO("XOFF by GPFC with pause rank" << pauseRank_temp);
         }
+
         if(queue_occupancy > PFC_TH_MAX){
+//            NS_LOG_INFO("Check 2: goto GPFC pause status check");
+//            std::cout << "Check 2: goto GPFC pause status check" << std::endl;
             isPause_temp = true;
             pauseRank_temp = 0; // pause all
+//            std::cout << "XOFF by PFC with pause rank" << pauseRank_temp << std::endl;
+//			NS_LOG_INFO("XOFF by PFC with pause rank" << pauseRank_temp);
+
         }
 
         // check unpause status
-        if(ptr_pause_obj->getIsPause() && queue_occupancy < PFC_TH_MIN && isPause_temp){
-            isPause_temp = false;
-            pauseRank_temp = 999;
+        if(queue_occupancy < PFC_TH_MIN){
+//        	NS_LOG_INFO("Check 3: Unpause status check" );
+//            std::cout << "Check 3: Unpause status check" << std::endl;
+            isUnPause_temp = true;
+//            pauseRank_temp = 999;
+//            std::cout << "XON by PFC with pause rank" << std::endl;
+//            NS_LOG_INFO("XON by PFC with pause rank" );
         }
+//        std::cout << "Check 4: End for loop isPause_temp:" <<isPause_temp << "pauseRank_temp"<< pauseRank_temp
+//        << "isUnPause_temp" << isUnPause_temp << std::endl;
+//        std::cout << std::endl;
+//        NS_LOG_INFO("Check 4: End for loop isPause_temp:" <<isPause_temp << "pauseRank_temp"<< pauseRank_temp
+//        << "isUnPause_temp" << isUnPause_temp);
+
     }
 
-    ptr_pause_obj->setup(pauseRank_temp, isPause_temp);
+    // update pause status
 
 
-    std::cout << " Final Setup: pauseRank_temp:" << pauseRank_temp << "isPause_temp:" << isPause_temp
-    <<std::endl;
+
+
+    std::cout << " Final Setup:";
+    if(isPause_temp){
+        ptr_pause_obj->setup(pauseRank_temp, true);
+        std::cout << " Set XOFF State" << " pauseRank_temp" << pauseRank_temp <<std::endl;
+        NS_LOG_INFO("Final Setup: Set XOFF State pauseRank_temp:" << pauseRank_temp );
+    } else if(isUnPause_temp)
+    {
+        ptr_pause_obj->setup(0, false);
+        std::cout << " Set XON State" << std::endl;
+        NS_LOG_INFO("Final Setup: Set XON State" << pauseRank_temp );
+    }
+
     std::cout << " =================================================================" <<std::endl;
     Simulator::Schedule (interval, &GPFCStatusManageFunc, ptr_pause_obj, qdc, interval);
 }
@@ -428,17 +518,26 @@ main (int argc, char *argv[])
 {
     // Users may find it convenient to turn on explicit debugging
     // for selected modules; the below lines suggest how to do this
-    #if 1
-    LogComponentEnable ("GPFC_LEAF_SPINE", LOG_LEVEL_ALL);
-    LogComponentEnable ("PifoFastQueueDisc", LOG_LEVEL_ALL);
+    #if 0
+//    LogComponentEnable ("GPFC_LEAF_SPINE", LOG_LEVEL_ALL);
+//    LogComponentEnable ("PifoFastQueueDisc", LOG_LEVEL_WARN);
+//    LogComponentEnable ("PifoFastQueueDisc", LOG_LEVEL_ERROR);
+    LogComponentEnable ("PointToPointNetDevice", LOG_LEVEL_ALL);
+    LogComponentEnable ("PointToPointChannel", LOG_LEVEL_ALL);
     LogComponentEnable ("TrafficControlHelper", LOG_LEVEL_ALL);
-    LogComponentEnable ("PointToPointHelper", LOG_LEVEL_ALL);
+    LogComponentEnable ("UdpSocket", LOG_LEVEL_ALL);
 
-    // LogComponentEnable ("QueueDisc", LOG_LEVEL_LOGIC);
+
+
+//    LogComponentEnable ("PointToPointHelper", LOG_LEVEL_ALL);
+//    LogComponentEnable ("FlowMonitor", LOG_LEVEL_INFO);
+
+     LogComponentEnable ("QueueDisc", LOG_LEVEL_ALL);
 //    LogComponentEnable ("InetSocketAddress", LOG_LEVEL_ALL);
 //    LogComponentEnable ("Packet", LOG_LEVEL_ALL);
 //    LogComponentEnable ("Socket", LOG_LEVEL_ALL);
-//    LogComponentEnable ("SimpleNetDevice", LOG_LEVEL_ALL);
+    LogComponentEnable ("PifoFastQueueDisc", LOG_LEVEL_ALL);
+    LogComponentEnable ("SimpleNetDevice", LOG_LEVEL_ALL);
 
 
 //    LogComponentEnable ("RedQueueDisc", LOG_LEVEL_INFO);
@@ -706,7 +805,7 @@ main (int argc, char *argv[])
     TrafficControlHelper tch_pifo_s2;
     tch_pifo_s2.SetRootQueueDisc("ns3::PifoFastQueueDisc","MaxSize",StringValue(QUEUE_SIZE),
                                  "Name",StringValue("OQ_to_S2"),
-                                 "ptr_pause_obj",PointerValue(&pauseObj_s1),
+                                 "ptr_pause_obj",PointerValue(&pauseObj_s2),
                                  "pfc_th_max", UintegerValue(PFC_TH_MAX),
                                  "pfc_th_min", UintegerValue(PFC_TH_MIN),
                                  "gpfc_th_max", UintegerValue(GPFC_TH_MAX),
@@ -811,9 +910,66 @@ main (int argc, char *argv[])
     QueueDiscContainer qdc_host = tch_host.Install(oq_to_host);
 
 
+// 	set name for each output queue,
+	qdc_l1.Get(0)->setQueueName("H1-to-L1");
+	qdc_l1.Get(1)->setQueueName("H2-to-L1");
+	qdc_l1.Get(2)->setQueueName("S1-to-L1");
+	qdc_l1.Get(3)->setQueueName("S1-to-L1");
+	qdc_l2.Get(0)->setQueueName("H3-to-L2");
+	qdc_l2.Get(1)->setQueueName("H4-to-L2");
+	qdc_l2.Get(2)->setQueueName("S1-to-L2");
+	qdc_l2.Get(3)->setQueueName("S1-to-L2");
+	qdc_l3.Get(0)->setQueueName("H5-to-L3");
+	qdc_l3.Get(1)->setQueueName("H6-to-L3");
+	qdc_l3.Get(2)->setQueueName("S1-to-L3");
+	qdc_l3.Get(3)->setQueueName("S1-to-L3");
+	qdc_s1.Get(0)->setQueueName("L1-to-S1");
+	qdc_s1.Get(1)->setQueueName("L2-to-S1");
+	qdc_s1.Get(2)->setQueueName("L3-to-S1");
+	qdc_s2.Get(0)->setQueueName("L1-to-S2");
+	qdc_s2.Get(1)->setQueueName("L2-to-S2");
+	qdc_s2.Get(2)->setQueueName("L3-to-S2");
+	qdc_host.Get(2)->setQueueName("L2-to-H3");
+
+
+
+
+
+
+    QueueDiscContainer gpfc_mon_l1;
+    // add l1-s1, l1-s2, l1-h1, l1-h2,
+    gpfc_mon_l1.Add(qdc_s1.Get(0)); // add l1-s1
+    gpfc_mon_l1.Add(qdc_s2.Get(0)); // add l1-s1
+    gpfc_mon_l1.Add(qdc_host.Get(0)); // add l1-s1
+    gpfc_mon_l1.Add(qdc_host.Get(1)); // add l1-s1
+
+    QueueDiscContainer gpfc_mon_l2;
+    // add l2-s1, l2-s2, l2-h3, l2-h4,
+    gpfc_mon_l2.Add(qdc_s1.Get(1)); // add l2-s1
+    gpfc_mon_l2.Add(qdc_s2.Get(1)); // add l2-s2
+    gpfc_mon_l2.Add(qdc_host.Get(2)); // add l2-h3
+    gpfc_mon_l2.Add(qdc_host.Get(3)); // add l2-h4
+
+    QueueDiscContainer gpfc_mon_l3;
+    // add l3-s1, l3-s2, l3-h5, l3-h6,
+    gpfc_mon_l3.Add(qdc_s1.Get(2)); // add l3-s1
+    gpfc_mon_l3.Add(qdc_s2.Get(2)); // add l3-s2
+    gpfc_mon_l3.Add(qdc_host.Get(4)); // add l3-h3
+    gpfc_mon_l3.Add(qdc_host.Get(5)); // add l3-h4
+
+    QueueDiscContainer gpfc_mon_s1;
+    // add s1-l1, s1-l2, s1-l3,
+    gpfc_mon_s1.Add(qdc_l1.Get(2)); // add s1-l1
+    gpfc_mon_s1.Add(qdc_l2.Get(2)); // add s1-l2
+    gpfc_mon_s1.Add(qdc_l3.Get(2)); // add s1-l3
+
+    QueueDiscContainer gpfc_mon_s2;
+    // add s2-l1, s2-l2, s2-l3,
+    gpfc_mon_s2.Add(qdc_l1.Get(3)); // add s1-l1
+    gpfc_mon_s2.Add(qdc_l2.Get(3)); // add s2-l2
+    gpfc_mon_s2.Add(qdc_l3.Get(3)); // add s3-l3
 
     //IP Setting
-
 
     // set receiver ip
 //    address.SetBase ("100.0.0.0", "255.255.255.0");
@@ -891,14 +1047,16 @@ main (int argc, char *argv[])
     auto Receiver_Node = H3;
     auto Receiver_IP = iph3l2.GetAddress (0);
     auto SenderNode1 = H1;
+    auto PauseObj1 =  &pauseObj_l1;
     auto SenderNode2 = H6;
+    auto PauseObj2 =  &pauseObj_l3;
 
-    for (std::size_t i = 0; i < FLOW_COUNT; i++){
+    for (uint32_t i = 0; i < FLOW_COUNT; i++){
 
         uint16_t port = 50000 + i+1;
 
 //        uint32_t priority = flow_prioritys[i];
-        uint32_t priority = 1;
+        uint32_t priority = i+1;
         Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), port));
         PacketSinkHelper sinkHelper ("ns3::UdpSocketFactory", sinkLocalAddress);
         ApplicationContainer sinkApp = sinkHelper.Install (Receiver_Node);
@@ -913,7 +1071,7 @@ main (int argc, char *argv[])
         Ptr<Socket> ns3UdpSocket = Socket::CreateSocket (SenderNode1, UdpSocketFactory::GetTypeId ());
         Ptr<MyPFCApp> app = CreateObject<MyPFCApp> ();
         app->Setup (ns3UdpSocket, recvAddress, FLOW_PKT_SIZE, 10000,
-                DataRate (FLOW_RATE_LOW),priority,&pauseObj_l1,i);
+                DataRate (FLOW_RATE_LOW),priority,PauseObj1,i);
         NS_LOG_INFO("PFC App Setup : pkt count" << 10000 << ", data rate:"
         << FLOW_RATE_LOW << ", priority is " << priority);
         SenderNode1->AddApplication(app);
@@ -924,7 +1082,7 @@ main (int argc, char *argv[])
         ns3UdpSocket = Socket::CreateSocket (SenderNode2, UdpSocketFactory::GetTypeId ());
         app = CreateObject<MyPFCApp> ();
         app->Setup (ns3UdpSocket, recvAddress, FLOW_PKT_SIZE, 10000,
-                    DataRate (FLOW_RATE_LOW),priority,&pauseObj_l1,i);
+                    DataRate (FLOW_RATE_LOW),priority,PauseObj2,i+2);
         NS_LOG_INFO("PFC App Setup : pkt count" << 10000 << ", data rate:"
                                                 << FLOW_RATE_LOW << ", priority is " << priority);
         SenderNode2->AddApplication(app);
@@ -947,14 +1105,12 @@ main (int argc, char *argv[])
     Simulator::Schedule (startTime, &PrintProgress, measurementWindow);
 
     // G-PFC State Management: Input, pauseObj, QueueDiscContainer, time interval,
-    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_l1, qdc_l1, GPFCStateUpdateWindow);
-    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_l2, qdc_l2, GPFCStateUpdateWindow);
-    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_l3, qdc_l3, GPFCStateUpdateWindow);
-    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_s1, qdc_s1, GPFCStateUpdateWindow);
-    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_s2, qdc_s2, GPFCStateUpdateWindow);
-    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_host, qdc_s2, GPFCStateUpdateWindow);
-
-
+    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_l1, gpfc_mon_l1, GPFCStateUpdateWindow);
+    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_l2, gpfc_mon_l2, GPFCStateUpdateWindow);
+    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_l3, gpfc_mon_l3, GPFCStateUpdateWindow);
+    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_s1, gpfc_mon_s1, GPFCStateUpdateWindow);
+    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_s2, gpfc_mon_s2, GPFCStateUpdateWindow);
+//    Simulator::Schedule (startTime, &GPFCStatusManageFunc, &pauseObj_host, qdc_s2, GPFCStateUpdateWindow);
 
     Simulator::Stop (stopTime + Seconds (2));
 

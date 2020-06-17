@@ -253,6 +253,8 @@ FlowMonitor::ReportLastRx (Ptr<FlowProbe> probe, uint32_t flowId, uint32_t packe
 
   NS_LOG_DEBUG ("ReportLastTx: removing tracked packet (flowId="
                 << flowId << ", packetId=" << packetId << ").");
+    NS_LOG_INFO ("ReportLastTx: removing tracked packet (flowId="
+                      << flowId << ", packetId=" << packetId << ").");
 
   m_trackedPackets.erase (tracked); // we don't need to track this packet anymore
 }

@@ -992,6 +992,35 @@ QueueDisc::RunEnd (void)
   m_running = false;
 }
 
+void
+QueueDisc::DequeueWaitNext (void){
+    // This function is called to get next available packet
+    // in GPFC mode,
+    // in GPFC Pause state, the packet with lower priority may stop at the queue,
+    NS_LOG_FUNCTION (this);
+    Ptr<const QueueDiscItem> item_peek = Peek();
+    if(item_peek == 0){
+        // means queue empty
+        NS_LOG_LOGIC ("Queue is empty");
+
+    }else {
+        // try dequeue first
+        Ptr<QueueDiscItem> item = DequeuePacket();
+
+        if (item == 0) {
+            NS_LOG_LOGIC("[Queue Disc] Queue Paused, peek not empty but dequeue return empty");
+            Time nextTime = NanoSeconds(500);
+            NS_LOG_LOGIC("[Queue Disc] Schedule for next lookup");
+            Simulator::Schedule(nextTime, &QueueDisc::DequeueWaitNext, this);
+        } else {
+            // if packet is dequeued, then call TransmitStart(p)
+            NS_LOG_LOGIC("[Queue Disc] Dequeue PKT after Pause, transmit Packet" << item);
+            Transmit (item);
+        }
+    }
+}
+
+
 bool
 QueueDisc::Restart (void)
 {
@@ -1000,6 +1029,17 @@ QueueDisc::Restart (void)
   if (item == 0)
     {
       NS_LOG_LOGIC ("No packet to send");
+
+      // Zhenguo Cui
+      // before end the function,
+      // peek item, and if packet exists,
+      // schedule it,
+      Ptr<const QueueDiscItem> item_peek = Peek();
+
+      if(item_peek!=0){
+          DequeueWaitNext();
+      }
+
       return false;
     }
 
@@ -1122,5 +1162,14 @@ uint32_t
 QueueDisc::getQueueOccupancy(){
     return 0;
 }
+
+uint32_t QueueDisc::setQueueName(std::string name){
+    return 0;
+}
+
+// std::string getName(){
+//     return "dunmmy queue";
+// }
+
 
 } // namespace ns3

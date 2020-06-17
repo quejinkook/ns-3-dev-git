@@ -263,6 +263,36 @@ PointToPointNetDevice::TransmitStart (Ptr<Packet> p)
 }
 
 void
+PointToPointNetDevice::TransmitWaitNext (void){
+    // This function is called to get next available packet
+    // in GPFC mode,
+    // in GPFC Pause state, the packet with lower priority may stop at the queue,
+    NS_LOG_FUNCTION (this);
+    Ptr<const Packet> p_peek = m_queue->Peek ();
+    if(p_peek == 0){
+        // means queue empty
+        NS_LOG_LOGIC ("Queue is empty");
+
+    }else {
+        // try dequeue first
+        Ptr <Packet> p = m_queue->Dequeue();
+
+        if (p == 0) {
+            NS_LOG_LOGIC("[PTP NetDevice] Queue Paused, peek not empty but dequeue return empty");
+            Time nextTime = NanoSeconds(500);
+            NS_LOG_LOGIC("[PTP NetDevice] Schedule for next lookup");
+            Simulator::Schedule(nextTime, &PointToPointNetDevice::TransmitWaitNext, this);
+        } else {
+            // if packet is dequeued, then call TransmitStart(p)
+            NS_LOG_LOGIC("[PTP NetDevice] Dequeue PKT after Pause, transmit Packet" << p);
+            TransmitStart(p);
+        }
+    }
+}
+
+
+
+void
 PointToPointNetDevice::TransmitComplete (void)
 {
   NS_LOG_FUNCTION (this);
@@ -281,12 +311,22 @@ PointToPointNetDevice::TransmitComplete (void)
   m_phyTxEndTrace (m_currentPkt);
   m_currentPkt = 0;
 
+
+  Ptr<const Packet> p_peek = m_queue->Peek ();
+
   Ptr<Packet> p = m_queue->Dequeue ();
-  if (p == 0)
-    {
+  if(p_peek !=0){
+      if (p == 0)
+      {
+          NS_LOG_LOGIC ("Queue Paused, go to wait status");
+          TransmitWaitNext();
+          return;
+      }
+  }else{
       NS_LOG_LOGIC ("No pending packets in device queue after tx complete");
       return;
-    }
+  }
+
 
   //
   // Got another packet off of the queue, so start the transmit process again.
@@ -538,9 +578,11 @@ PointToPointNetDevice::Send (
     {
       //
       // If the channel is ready for transition we send the packet right now
-      // 
+      //
+      NS_LOG_INFO("[PTP NetDevice] Enqueue Success");
       if (m_txMachineState == READY)
         {
+          NS_LOG_INFO("[PTP NetDevice] Call Dequeue");
           packet = m_queue->Dequeue ();
           m_snifferTrace (packet);
           m_promiscSnifferTrace (packet);

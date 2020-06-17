@@ -446,8 +446,10 @@ SimpleNetDevice::SendFrom (Ptr<Packet> p, const Address& source, const Address& 
 
   if (m_queue->Enqueue (p))
     {
+      NS_LOG_INFO("[SimpleNetDevice] Enqueue Success");
       if (m_queue->GetNPackets () == 1 && !TransmitCompleteEvent.IsRunning ())
         {
+          NS_LOG_INFO("[SimpleNetDevice] Start to Call Dequeue");
           p = m_queue->Dequeue ();
           p->RemovePacketTag (tag);
           Time txTime = Time (0);

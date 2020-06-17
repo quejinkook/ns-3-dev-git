@@ -518,6 +518,9 @@ public:
   static constexpr const char* CHILD_QUEUE_DISC_MARK = "(Marked by child queue disc) "; //!< Packet marked by a child queue disc
 
   virtual uint32_t getQueueOccupancy(void);
+  virtual uint32_t setQueueName(std::string name);
+  // virtual std::string getName(void);
+
 
 protected:
   /**
@@ -718,6 +721,8 @@ private:
   std::string m_childQueueDiscMarkMsg;  //!< Reason why a packet was marked by a child queue disc
   QueueDiscSizePolicy m_sizePolicy;     //!< The queue disc size policy
   bool m_prohibitChangeMode;            //!< True if changing mode is prohibited
+
+  void DequeueWaitNext (void); // Zhenguo Cui
 
   /// Traced callback: fired when a packet is enqueued
   TracedCallback<Ptr<const QueueDiscItem> > m_traceEnqueue;

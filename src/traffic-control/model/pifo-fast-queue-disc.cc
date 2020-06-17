@@ -44,6 +44,8 @@
 #include "pifo-fast-queue-disc.h"
 #include <ns3/string.h>
 #include "ns3/myTag.h"
+#include <chrono>
+#include <thread>
 
 // mutex
 //#include <mutex>
@@ -60,6 +62,7 @@ uint32_t getRankTag(Ptr <Packet> packet)
     MySimpleTag rankTagTemp;
     packet->PeekPacketTag (rankTagTemp);
     NS_LOG_LOGIC("[PIFO FAST QUEUE DISC] Call Get PKT's SimpleTag :  "  << rankTagTemp.GetRank());
+
     return rankTagTemp.GetRank();
 }
 
@@ -103,7 +106,6 @@ PifoFastQueueDisc::TakeSnapShotQueue(void)
                     << " Occupancy:" << queue_occupancy
                     << " of Total:" << TOTAL_QUEUE_OCCUPANCY
                     << " Percentage " << percentage
-
         );
 
     }
@@ -210,6 +212,8 @@ PifoFastQueueDisc::~PifoFastQueueDisc ()
 
   NS_LOG_INFO (" =================================");
   NS_LOG_INFO ("[ " << NAME << "]" << " Summary");
+  NS_LOG_INFO ("[ " << NAME << "]" << " m_totalSentPktCount" << m_totalSentPktCount);
+
   NS_LOG_INFO ("PFC Pause Count" << PAUSE_COUNT_PFC);
   NS_LOG_INFO ("GPFC Pause Count" << PAUSE_COUNT_GPFC);
   NS_LOG_INFO (" =================================");
@@ -223,13 +227,31 @@ PifoFastQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 
     if (TOTAL_QUEUE_OCCUPANCY >= TOTAL_QUEUE_SIZE)
     {
-        NS_LOG_LOGIC ("[ " << NAME << "]" << " Queue disc limit exceeded -- dropping packet");
+        NS_LOG_WARN ("[ " << NAME << "]" << " Queue disc limit exceeded -- dropping packet");
         DropBeforeEnqueue (item, LIMIT_EXCEEDED_DROP);
         return false;
     }
 
   uint32_t rank = getRankTag(item->GetPacket ());
   NS_LOG_LOGIC("[ " << NAME << "]" << "Enqueue Packet Rank is  " << rank);
+
+    MySimpleTag rankTagTemp;
+    item->GetPacket()->PeekPacketTag (rankTagTemp);
+    uint32_t appId =  rankTagTemp.GetId();
+    uint32_t appPriority = rankTagTemp.GetRank();
+    uint32_t appPktNo = rankTagTemp.GetNo();
+    uint64_t sentTime = rankTagTemp.GetTimeSent();
+    uint64_t finalTime = Simulator::Now ().GetNanoSeconds();
+    uint64_t delayInNano =finalTime - sentTime;
+
+//    if(NAME == "L2-to-H3") {
+        NS_LOG_WARN(
+                "[ " << NAME << "]" << "Enqueue ======> Packet Info: AppID, AppPriority, PktNo, Delay :"
+                     << appId << ","
+                     << appPriority << "," << appPktNo << "," << delayInNano << "Ns");
+//    }
+
+
 
   bool retval = false;
 
@@ -318,111 +340,161 @@ PifoFastQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 Ptr<QueueDiscItem>
 PifoFastQueueDisc::DoDequeue (void)
 {
-  NS_LOG_FUNCTION (this);
-  Ptr<QueueDiscItem> item;
-  Ptr<const QueueDiscItem> item_temp;
+    NS_LOG_FUNCTION (this);
+    Ptr<QueueDiscItem> item;
+    Ptr<const QueueDiscItem> item_temp;
 
     // peek first to check if pause it or not,
     // if not, then dequeue,
-    NS_LOG_LOGIC("[ " << NAME << "]" << "======> Start DoDequeue  " );
+    NS_LOG_INFO("[ " << NAME << "]" << "======> Start DoDequeue  at Time" << Simulator::Now ().GetNanoSeconds () );
     NS_LOG_LOGIC("[ " << NAME << "]" << "Check Pause Status" );
 
-    if(m_ptr_pause_obj->getIsPause()){
+    bool isScheduleForNextRound = false;
+
+    //peek item and check if move next round or not
+    if (m_ptr_pause_obj->getIsPause()) {
         NS_LOG_LOGIC("[ " << NAME << "]" << "Pause True,Pause Rank:" << m_ptr_pause_obj->getPauseValue());
-        NS_LOG_LOGIC("[ " << NAME << "]" << "Peek First to check the head packet need paused" );
+        NS_LOG_LOGIC("[ " << NAME << "]" << "Peek First to check the head packet need paused");
 
-        for (uint32_t i = 0; i < GetNInternalQueues(); i++) {
-            if ((item_temp = GetInternalQueue(i)->Peek()) != 0) {
-                uint32_t rank = getRankTag(item_temp->GetPacket());
-                NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item with rank" << rank);
 
-                if(m_ptr_pause_obj->getPauseValue() == 0)
-                {
-                    NS_LOG_LOGIC("[ " << NAME << "]" << "The current pause state is : Pause All Traffic");
-                    NS_LOG_LOGIC("[ " << NAME << "]" << "======> End DoDequeue");
-                    return item;
-                }
+//        while (!isScheduleForNextRound) {
 
-                if (rank >= m_ptr_pause_obj->getPauseValue()){
-                    NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item has larger or equal rank than paused rank");
-                    NS_LOG_LOGIC("[ " << NAME << "]" << "======> End DoDequeue");
-                    return item;
-                }else{
-                    NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item has small rank than paused rank");
-                    NS_LOG_LOGIC("[ " << NAME << "]" << "Continue to Dequeue");
+            if (m_ptr_pause_obj->getPauseValue() == 0) {
+                NS_LOG_LOGIC("[ " << NAME << "]" << "The current pause state is : Pause All Traffic");
+                NS_LOG_LOGIC("[ " << NAME << "]" << "======> Sleep and wait for next dequeue");
+                isScheduleForNextRound = true;
+            } else {
+
+                for (uint32_t i = 0; i < GetNInternalQueues(); i++) {
+                    if ((item_temp = GetInternalQueue(i)->Peek()) != 0) {
+                        MySimpleTag rankTagTemp;
+                        item_temp->GetPacket()->PeekPacketTag(rankTagTemp);
+                        uint32_t appId = rankTagTemp.GetId();
+                        uint32_t appPriority = rankTagTemp.GetRank();
+                        uint32_t appPktNo = rankTagTemp.GetNo();
+                        uint64_t sentTime = rankTagTemp.GetTimeSent();
+                        uint64_t finalTime = Simulator::Now().GetNanoSeconds();
+                        uint64_t delayInNano = finalTime - sentTime;
+
+                        if (NAME == "L2-to-H3") {
+                            NS_LOG_WARN(
+                                    "[ " << NAME << "]"
+                                         << "Dequeue ======> Peek Packet Info: AppID, AppPriority, PktNo, Delay :"
+                                         << appId << ","
+                                         << appPriority << "," << appPktNo << "," << delayInNano << "Ns");
+                        }
+
+                        if (appPriority >= m_ptr_pause_obj->getPauseValue()) {
+                            NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item has larger or equal rank than paused rank");
+                            NS_LOG_LOGIC("[ " << NAME << "]" << "======> Sleep and wait for next dequeue");
+                            isScheduleForNextRound = true;
+                            break;
+                        } else {
+                            NS_LOG_LOGIC("[ " << NAME << "]" << "Peek item has small rank than paused rank");
+                            NS_LOG_LOGIC("[ " << NAME << "]" << "======> Continue to Dequeue");
+                            isScheduleForNextRound = false; // out for while loop
+                            break;
+                        }
+                    }
                 }
             }
+
+            if(isScheduleForNextRound){
+                //sleep for next round,
+//                std::this_thread::sleep_for(std::chrono::nanoseconds(500));
+
+                //call next function
+                NS_LOG_LOGIC("[ " << NAME << "]" << "Need Schedule for Next Round");
+                return item;
+            }
+
+//        }
+    } else {
+            NS_LOG_LOGIC("[ " << NAME << "]" << "Pause False, Continue to Dequeue");
+            isScheduleForNextRound = false;
+    }
+
+
+    // sleep and then check again.
+//    if(isScheduleForNextRound){
+//
+//        NS_LOG_INFO("[ " << NAME << "]" << "======> Call Next Dequeue Round");
+////        Simulator::Schedule (m_nextDequeueInterval, &PifoFastQueueDisc::DoDequeue, this);
+//        Simulator::Schedule (m_nextDequeueInterval, &PifoFastQueueDisc::DoDequeue,this);
+//    } else
+
+    if(TOTAL_QUEUE_OCCUPANCY > 0){
+        // if not move to next round, continue to dequeue packet,
+
+        if (DEQUEUE_MODE == "RR") {
+            item = DoDequeueRR();
+        } else if (DEQUEUE_MODE == "PQ") {
+            item = DoDequeuePQ();
         }
 
-    } else{
-        NS_LOG_LOGIC("[ " << NAME << "]" << "Pause False, Continue to Dequeue");
+
+//        if(NAME == "L2-to-H3"){
+            MySimpleTag rankTagTemp;
+            item->GetPacket()->PeekPacketTag (rankTagTemp);
+            uint32_t appId =  rankTagTemp.GetId();
+            uint32_t appPriority = rankTagTemp.GetRank();
+            uint32_t appPktNo = rankTagTemp.GetNo();
+            uint64_t sentTime = rankTagTemp.GetTimeSent();
+            uint64_t finalTime = Simulator::Now ().GetNanoSeconds();
+            uint64_t delayInNano =finalTime - sentTime;
+
+            NS_LOG_WARN("[ " << NAME << "]" << "Dequeue ======> Dequeue Packet " << item);
+            NS_LOG_WARN("[ " << NAME << "]" << "Dequeue ======> Packet Info: AppID, AppPriority, PktNo, Delay :" << rankTagTemp.GetId() << ","
+            << appPriority << "," << rankTagTemp.GetNo() << "," << delayInNano << "Ns");
+
+            switch(appId){
+                case 0:
+                    if(m_debug_flow0_pkt_count == appPktNo) {
+                        m_debug_flow0_pkt_count ++;
+
+                    }else{
+                        NS_LOG_ERROR("[ " << NAME << "]" << " Packet No Mismatch, Expected:" << m_debug_flow0_pkt_count
+                        << ", Actual" << appPktNo);
+                    }
+                    break;
+                case 1:
+                    if(m_debug_flow1_pkt_count == appPktNo) {
+                        m_debug_flow1_pkt_count ++;
+                    }else{
+                        NS_LOG_ERROR("[ " << NAME << "]" << " Packet No Mismatch, Expected:" << m_debug_flow1_pkt_count
+                        << ", Actual" << appPktNo);
+                    }
+                    break;
+                case 2:
+                    if(m_debug_flow2_pkt_count == appPktNo) {
+                        m_debug_flow2_pkt_count ++;
+                    }else{
+                        NS_LOG_ERROR("[ " << NAME << "]" << " Packet No Mismatch, Expected:" << m_debug_flow2_pkt_count
+                        << ", Actual" << appPktNo);
+                    }
+                    break;
+                case 3:
+                    if(m_debug_flow3_pkt_count == appPktNo) {
+                        m_debug_flow3_pkt_count ++;
+                    }else{
+                        NS_LOG_ERROR("[ " << NAME << "]" << " Packet No Mismatch, Expected:" << m_debug_flow3_pkt_count
+                        << ", Actual" << appPktNo);
+                    }
+                    break;
+            }
+
+
+
+//        }
+//        NS_LOG_WARN("[ " << NAME << "]" << "======> Dequeue Packet " << item);
+
 
     }
-
-    if(DEQUEUE_MODE == "RR"){
-        item = DoDequeueRR();
-    }
-    else if(DEQUEUE_MODE == "PQ")
-    {
-        item = DoDequeuePQ();
-    }
-
-
-
-//    // check unpause condition.
-//    if(item != nullptr)
-//    {
-//        uint32_t rank = getRankTag(item->GetPacket ());
-//        NS_LOG_LOGIC ("[ " << NAME << "]" << "Average Rank Before : " << AVG_PRIORITY);
-//
-//        // Calculate Enqueued Packet Average
-//        // if the queue is empty, reset average to 0
-//        // else calculate updated average.
-//
-//        if(TOTAL_QUEUE_OCCUPANCY == 0)
-//        {
-//            AVG_PRIORITY = 0;
-//        }
-//        else
-//        {
-//            AVG_PRIORITY = AVG_PRIORITY - (rank - AVG_PRIORITY) / TOTAL_QUEUE_OCCUPANCY;
-//        }
-//
-//        NS_LOG_LOGIC ("[ " << NAME << "]" << "Dequeued Packet Priority: " << rank
-//                      << "\n Average Rank After :" << AVG_PRIORITY );
-//
-//        NS_LOG_LOGIC("[ " << NAME << "]" << "Start to Check UnPause Condition");
-//        if(isGPFCPAUSE && !isPFCPAUSE) // GPFC Pause Only
-//        {
-//            // if current queue occupancy is smaller than GPFC Min Threshold, then
-//            // set unpause
-//            if(TOTAL_QUEUE_OCCUPANCY <= GPFC_TH_MIN)
-//            {
-//                isGPFCPAUSE = false;
-//                SetUnpause();
-//                NS_LOG_LOGIC("[ " << NAME << "]" << "SetUnpause by GPFC TH MIN, Queue Occupancy at " << TOTAL_QUEUE_OCCUPANCY);
-//                TakeSnapShotQueue();
-//            }
-//        } else if (isPFCPAUSE) // if PFC pause
-//        {
-//            // if current queue occupancy is smaller than PFC Min Threshold, then
-//            // set unpause
-//            if(TOTAL_QUEUE_OCCUPANCY <= PFC_TH_MIN)
-//            {
-//                isPFCPAUSE = false;
-//                isGPFCPAUSE = false;
-//                SetUnpause();
-//                NS_LOG_LOGIC("[ " << NAME << "]" << "SetUnpause by PFC TH MIN, Queue Occupancy at " << TOTAL_QUEUE_OCCUPANCY);
-//                TakeSnapShotQueue();
-//            }
-//        }
-//    }else
-//    {
-//        NS_LOG_LOGIC("[ " << NAME << "]" << "ByPass Check Pause Condition due to nullptr");
-//    }
 
       return item;
 }
+
+
 Ptr<QueueDiscItem>
 PifoFastQueueDisc::DoDequeuePQ (void)
 {
@@ -444,6 +516,7 @@ PifoFastQueueDisc::DoDequeuePQ (void)
             uint32_t rank = getRankTag(item->GetPacket());
             NS_LOG_LOGIC("[ " << NAME << "]" << "Dequeued Packet Rank is  " << rank);
 
+            m_totalSentPktCount ++;
             return item;
         }
     }
@@ -568,6 +641,16 @@ PifoFastQueueDisc::getQueueOccupancy(){
     return TOTAL_QUEUE_OCCUPANCY;
 }
 
+uint32_t
+PifoFastQueueDisc::setQueueName(std::string name){
+    NAME = name;
+    return 0;
+}
+
+// std::string
+// PifoFastQueueDisc::getName(){
+//     return NAME;
+// }
 
 
 } // namespace ns3

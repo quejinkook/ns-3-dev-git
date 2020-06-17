@@ -68,6 +68,11 @@ public:
   PifoFastQueueDisc ();
 
   uint32_t getQueueOccupancy(void);
+
+  uint32_t setQueueName(std::string name);
+  // std::string getName(void);
+
+
   virtual ~PifoFastQueueDisc();
 
   // Reasons for dropping packets
@@ -112,6 +117,12 @@ private:
     uint32_t PAUSE_COUNT_PFC = 0;
     uint32_t PAUSE_COUNT_GPFC = 0;
 
+    // during monitoring logfile, it seems that the dequeue function is called when
+    // enqueue is happen, however, in GPFC concept, the dequeue function result will return null in pause state
+    // for example, pause rank = 3, where enqueued packet rank is bigger than 3.
+    // for the temp solution,
+    // schedule the dequeue function in nextDequeueInterval when the queue is paused.
+    Time m_nextDequeueInterval = NanoSeconds(500);
 
     // trace pause rank
     TracedValue<uint32_t> m_pausePriority = 0;
@@ -131,6 +142,14 @@ private:
 
     virtual void TakeSnapShotQueue();
 
+
+
+    uint32_t m_totalSentPktCount = 0;
+
+    uint32_t m_debug_flow0_pkt_count = 0;
+    uint32_t m_debug_flow1_pkt_count = 0;
+    uint32_t m_debug_flow2_pkt_count = 0;
+    uint32_t m_debug_flow3_pkt_count = 0;
     };
 
 } // namespace ns3

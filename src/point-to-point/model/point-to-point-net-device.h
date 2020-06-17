@@ -190,6 +190,9 @@ public:
   virtual void SetPromiscReceiveCallback (PromiscReceiveCallback cb);
   virtual bool SupportsSendFrom (void) const;
 
+
+
+
 protected:
   /**
    * \brief Handler for MPI receive event
@@ -274,6 +277,13 @@ private:
    * of sending a packet out on the channel.
    */
   void TransmitComplete (void);
+
+
+  /**
+   *   Reschedule the function to get packet from the queue when it becomes available,
+   *   In GPFC Pause State,
+   */
+  void TransmitWaitNext(void);
 
   /**
    * \brief Make the link up and running
