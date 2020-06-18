@@ -999,10 +999,10 @@ QueueDisc::DequeueWaitNext (void){
     // in GPFC Pause state, the packet with lower priority may stop at the queue,
     NS_LOG_FUNCTION (this);
     m_isRunBackendDequeue = true;
-    Ptr<const QueueDiscItem> item_peek = Peek();
-    if(item_peek == 0){
+    if(getQueueOccupancy() == 0){
         // means queue empty
-        NS_LOG_LOGIC ("Queue is empty");
+        NS_LOG_LOGIC ("Queue is empty. Stop Backend Dequeue");
+        m_isRunBackendDequeue = false;
 
     }else {
         // try dequeue first
@@ -1038,7 +1038,8 @@ QueueDisc::Restart (void)
       // peek item, and if packet exists,
       // schedule backend dequeue,
       
-      if (!m_isRunBackendDequeue && getQueueOccupancy()>0){      
+      if (!m_isRunBackendDequeue && getQueueOccupancy()>0){
+          NS_LOG_LOGIC ("Schedule for backend Dequeue");
           DequeueWaitNext();
         }
 
@@ -1159,10 +1160,21 @@ QueueDisc::Transmit (Ptr<QueueDiscItem> item)
     }
 
 
-  if(getQueueOccupancy() >0 && !m_isRunBackendDequeue){
+  if(getQueueOccupancy() >0 ){
     // zhenguo cui
     // continue to dequeue
-    Simulator::ScheduleNow (&QueueDisc::DequeueWaitNext, this);
+    //
+    NS_LOG_LOGIC ("[Debug Point] => check is run backend dequeue");
+
+    if(!m_isRunBackendDequeue){
+        NS_LOG_LOGIC ("[Debug Point] => check backend dequeue is not running, schedule for new backend dequeue");
+        Simulator::ScheduleNow (&QueueDisc::DequeueWaitNext, this);
+    }else{
+        NS_LOG_LOGIC ("[Debug Point] => check backend dequeue is running, not schedule the new one");
+    }
+
+
+
     // DequeueWaitNext();
   }
 

@@ -227,7 +227,7 @@ PifoFastQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
 
     if (TOTAL_QUEUE_OCCUPANCY >= TOTAL_QUEUE_SIZE)
     {
-        NS_LOG_WARN ("[ " << NAME << "]" << " Queue disc limit exceeded -- dropping packet");
+//        NS_LOG_WARN ("[ " << NAME << "]" << " Queue disc limit exceeded -- dropping packet");
         DropBeforeEnqueue (item, LIMIT_EXCEEDED_DROP);
         return false;
     }
@@ -235,20 +235,20 @@ PifoFastQueueDisc::DoEnqueue (Ptr<QueueDiscItem> item)
   uint32_t rank = getRankTag(item->GetPacket ());
   NS_LOG_LOGIC("[ " << NAME << "]" << "Enqueue Packet Rank is  " << rank);
 
-    MySimpleTag rankTagTemp;
-    item->GetPacket()->PeekPacketTag (rankTagTemp);
-    uint32_t appId =  rankTagTemp.GetId();
-    uint32_t appPriority = rankTagTemp.GetRank();
-    uint32_t appPktNo = rankTagTemp.GetNo();
-    uint64_t sentTime = rankTagTemp.GetTimeSent();
-    uint64_t finalTime = Simulator::Now ().GetNanoSeconds();
-    uint64_t delayInNano =finalTime - sentTime;
+//    MySimpleTag rankTagTemp;
+//    item->GetPacket()->PeekPacketTag (rankTagTemp);
+//    uint32_t appId =  rankTagTemp.GetId();
+//    uint32_t appPriority = rankTagTemp.GetRank();
+//    uint32_t appPktNo = rankTagTemp.GetNo();
+//    uint64_t sentTime = rankTagTemp.GetTimeSent();
+//    uint64_t finalTime = Simulator::Now ().GetNanoSeconds();
+//    uint64_t delayInNano =finalTime - sentTime;
 
 //    if(NAME == "L2-to-H3") {
-        NS_LOG_WARN(
-                "[ " << NAME << "]" << "Enqueue ======> Packet Info: AppID, AppPriority, PktNo, Delay :"
-                     << appId << ","
-                     << appPriority << "," << appPktNo << "," << delayInNano << "Ns");
+//        NS_LOG_WARN(
+//                "[ " << NAME << "]" << "Enqueue ======> Packet Info: AppID, AppPriority, PktNo, Delay :"
+//                     << appId << ","
+//                     << appPriority << "," << appPktNo << "," << delayInNano << "Ns");
 //    }
 
 
@@ -376,8 +376,8 @@ PifoFastQueueDisc::DoDequeue (void)
                         uint64_t finalTime = Simulator::Now().GetNanoSeconds();
                         uint64_t delayInNano = finalTime - sentTime;
 
-                        if (NAME == "L2-to-H3") {
-                            NS_LOG_WARN(
+                        if (NAME == "L3-to-H6") {
+                            NS_LOG_LOGIC(
                                     "[ " << NAME << "]"
                                          << "Dequeue ======> Peek Packet Info: AppID, AppPriority, PktNo, Delay :"
                                          << appId << ","
@@ -401,8 +401,6 @@ PifoFastQueueDisc::DoDequeue (void)
 
             if(isScheduleForNextRound){
                 //sleep for next round,
-//                std::this_thread::sleep_for(std::chrono::nanoseconds(500));
-
                 //call next function
                 NS_LOG_LOGIC("[ " << NAME << "]" << "Need Schedule for Next Round");
                 return item;
@@ -433,19 +431,20 @@ PifoFastQueueDisc::DoDequeue (void)
         }
 
 
-//        if(NAME == "L2-to-H3"){
+        if(NAME == "L3-to-H5" or NAME == "L3-to-H6"){
             MySimpleTag rankTagTemp;
             item->GetPacket()->PeekPacketTag (rankTagTemp);
             uint32_t appId =  rankTagTemp.GetId();
-            uint32_t appPriority = rankTagTemp.GetRank();
+//            uint32_t appPriority = rankTagTemp.GetRank();
             uint32_t appPktNo = rankTagTemp.GetNo();
             uint64_t sentTime = rankTagTemp.GetTimeSent();
             uint64_t finalTime = Simulator::Now ().GetNanoSeconds();
             uint64_t delayInNano =finalTime - sentTime;
 
-            NS_LOG_WARN("[ " << NAME << "]" << "Dequeue ======> Dequeue Packet " << item);
-            NS_LOG_WARN("[ " << NAME << "]" << "Dequeue ======> Packet Info: AppID, AppPriority, PktNo, Delay :" << rankTagTemp.GetId() << ","
-            << appPriority << "," << rankTagTemp.GetNo() << "," << delayInNano << "Ns");
+            NS_LOG_WARN("[ " << NAME << "]" << "\t Dequeue:\t" << rankTagTemp.GetId() << "\t" << rankTagTemp.GetNo() << "\t" << delayInNano );
+
+//            NS_LOG_WARN("[ " << NAME << "]" << "Dequeue ======> Packet Info: AppID, AppPriority, PktNo, Delay :" << rankTagTemp.GetId() << ","
+//            << appPriority << "," << rankTagTemp.GetNo() << "," << delayInNano << "Ns");
 
             switch(appId){
                 case 0:
@@ -485,7 +484,7 @@ PifoFastQueueDisc::DoDequeue (void)
 
 
 
-//        }
+        }
 //        NS_LOG_WARN("[ " << NAME << "]" << "======> Dequeue Packet " << item);
 
 
